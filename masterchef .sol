@@ -633,7 +633,7 @@ contract MasterChef is Ownable {
         emit Harvest(_to, _pid, pending);
     }
     
-     function emergencyStop(IERC20 _Token,address _to)public onlyOwner{
+     function emergencyStop(IERC20 _token,address _to)public onlyOwner{
         
         uint addrBalance = _Token.balanceOf(address(this));
         _Token.transfer(_to, addrBalance);
