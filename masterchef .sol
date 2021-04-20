@@ -1600,7 +1600,7 @@ contract MasterChef is Ownable {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         
-        require(block.number<pool.poolStartBlock,"this pool is not start !");
+        require(block.number<=pool.poolStartBlock,"this pool is not start !");
         require(user.amount >= _amount, "withdraw: not good");
         
         harvest(_pid,msg.sender);
