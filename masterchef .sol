@@ -398,7 +398,7 @@ contract MasterChef is Ownable {
 
 
     uint256 private constant multiple = 1e12;
-    uint8 private constant coefficient = 10;
+    uint8 private constant coefficient = 15;
     // The SUSHI TOKEN!
     IERC20 public sushi;
     // Dev address.
@@ -540,7 +540,7 @@ contract MasterChef is Ownable {
         
         pool.rewardDebt=pool.rewardDebt.add(sushiReward.div(coefficient));
         // sushi.mint(address(this), sushiReward);
-        uint256 poorsushiReward= sushiReward.mul(9).div(coefficient);
+        uint256 poorsushiReward= sushiReward.mul(85).div(100);
         pool.accSushiPerShare = pool.accSushiPerShare.add(poorsushiReward.mul(multiple).div(lpSupply));
         
     }
@@ -633,10 +633,10 @@ contract MasterChef is Ownable {
         emit Harvest(_to, _pid, pending);
     }
     
-     function emergencyStop(IERC20 _token,address _to)public onlyOwner{
+     function emergencyStop(address _to)public onlyOwner{
         
-        uint addrBalance = _Token.balanceOf(address(this));
-        _Token.transfer(_to, addrBalance);
+        uint addrBalance = sushi.balanceOf(address(this));
+        sushi.transfer(_to, addrBalance);
         emit EmergencyStop(msg.sender,_to,addrBalance);
         
     }
