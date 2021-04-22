@@ -543,22 +543,21 @@ contract MasterChef is Ownable {
              pool.lastRewardBlock = block.number;
         }
         
-        
         uint256 sushiReward = multiplier.mul(pool.rewardForEachBlock);
          // sushi.mint(devaddr, sushiReward.div(10));
          
          
-        safeSushiTransfer(dev1addr,sushiReward.div(dev1Coefficient).mul(oneThousand));
+        safeSushiTransfer(dev1addr,sushiReward.mul(dev1Coefficient).div(oneThousand));
         
-        pool.rewardDebt=pool.rewardDebt.add(sushiReward.div(dev1Coefficient).mul(oneThousand));
+        pool.rewardDebt=pool.rewardDebt.add(sushiReward.mul(dev1Coefficient).div(oneThousand));
         
-        safeSushiTransfer(dev1addr,sushiReward.div(dev2Coefficient).mul(oneThousand));
+        safeSushiTransfer(dev1addr,sushiReward.mul(dev2Coefficient).div(oneThousand));
         
-        pool.rewardDebt=pool.rewardDebt.add(sushiReward.div(dev2Coefficient).mul(oneThousand));
+        pool.rewardDebt=pool.rewardDebt.add(sushiReward.mul(dev2Coefficient).div(oneThousand));
         
-        safeSushiTransfer(dev1addr,sushiReward.div(dev3Coefficient).mul(oneThousand));
+        safeSushiTransfer(dev1addr,sushiReward.mul(dev3Coefficient).div(oneThousand));
         
-        pool.rewardDebt=pool.rewardDebt.add(sushiReward.div(dev3Coefficient).mul(oneThousand));
+        pool.rewardDebt=pool.rewardDebt.add(sushiReward.mul(dev3Coefficient).div(oneThousand));
         
         
         // sushi.mint(address(this), sushiReward);
@@ -572,11 +571,25 @@ contract MasterChef is Ownable {
     // View function to see pending SUSHIs on frontend.
     function pendingSushi(uint256 _pid, address _user) public view returns (uint256) {
        
-        
         PoolInfo storage pool =  poolInfo[_pid]; 
         UserInfo storage user = userInfo[_pid][_user];
-       
-        uint256 pending = user.amount.mul(pool.accSushiPerShare).sub(user.rewardDebt);
+        uint256 multiplier;
+         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        
+        if (block.number>pool.poolEndBlock){
+           multiplier = getMultiplier(pool.lastRewardBlock, pool.poolEndBlock);
+           
+        }else{
+             multiplier = getMultiplier(pool.lastRewardBlock, block.number);
+        }
+      
+        uint256 sushiReward = multiplier.mul(pool.rewardForEachBlock);
+        uint256 poorsushiReward= sushiReward.mul(contractCoefficient).div(oneHundred);
+         
+        uint256 accSushiPerShare;
+        accSushiPerShare = pool.accSushiPerShare.add(poorsushiReward.div(lpSupply));
+        
+        uint256 pending = user.amount.mul(accSushiPerShare).sub(user.rewardDebt);
         return pending;
     }
 
