@@ -396,8 +396,6 @@ contract MasterChef is Ownable {
         uint256 rewardDebt;
     }
 
-
-    uint256 private constant multiple = 1e12;
     uint8 private constant coefficient = 15;
     // The SUSHI TOKEN!
     IERC20 public sushi;
@@ -541,7 +539,7 @@ contract MasterChef is Ownable {
         pool.rewardDebt=pool.rewardDebt.add(sushiReward.div(coefficient));
         // sushi.mint(address(this), sushiReward);
         uint256 poorsushiReward= sushiReward.mul(85).div(100);
-        pool.accSushiPerShare = pool.accSushiPerShare.add(poorsushiReward.mul(multiple).div(lpSupply));
+        pool.accSushiPerShare = pool.accSushiPerShare.add(poorsushiReward.div(lpSupply));
         
     }
 
@@ -554,7 +552,7 @@ contract MasterChef is Ownable {
         PoolInfo storage pool =  poolInfo[_pid]; 
         UserInfo storage user = userInfo[_pid][_user];
        
-        uint256 pending = user.amount.mul(pool.accSushiPerShare).div(multiple).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(pool.accSushiPerShare).sub(user.rewardDebt);
         return pending;
     }
 
@@ -583,7 +581,7 @@ contract MasterChef is Ownable {
         harvest(_pid,msg.sender);
         pool.lpToken.transferFrom(address(msg.sender), address(this), _amount);
         user.amount = user.amount.add(_amount);
-        user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(multiple);
+        user.rewardDebt = user.amount.mul(pool.accSushiPerShare);
         emit Deposit(msg.sender, _pid, _amount);
     }
 
@@ -600,7 +598,7 @@ contract MasterChef is Ownable {
         // uint256 pending = user.amount.mul(pool.accSushiPerShare).div(1e12).sub(user.rewardDebt);
         // safeSushiTransfer(msg.sender, pending);
         user.amount = user.amount.sub(_amount);
-        user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(multiple);
+        user.rewardDebt = user.amount.mul(pool.accSushiPerShare);
         pool.lpToken.transfer(address(msg.sender), _amount);
         emit Withdraw(msg.sender, _pid, _amount);
     }
@@ -624,7 +622,7 @@ contract MasterChef is Ownable {
         uint256 pending =pendingSushi(_pid,_to);
         safeSushiTransfer(_to, pending);
         pool.rewardDebt=pool.rewardDebt.add(pending);
-        user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(multiple);
+        user.rewardDebt = user.amount.mul(pool.accSushiPerShare);
         if (pending == 0) { 
             success = false; 
         } else{
@@ -642,7 +640,7 @@ contract MasterChef is Ownable {
     }
     function closePool(uint256 _pid)public onlyOwner{
         PoolInfo storage pool =  poolInfo[_pid]; 
-        pool.poolEndBlock=block.number.sub(1);
+        pool.poolEndBlock=block.number;
         emit ClosePool(_pid);
     }
     
@@ -652,7 +650,6 @@ contract MasterChef is Ownable {
         uint256 sushiBal = sushi.balanceOf(address(this));
             require(_amount <= sushiBal,"balance not have enough SUSHIS!");
             sushi.transfer(_to, _amount);
-           
     }
 
     // Update dev address by the previous dev.
