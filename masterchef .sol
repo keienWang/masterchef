@@ -425,7 +425,6 @@ contract MasterChef is Ownable {
     // The block number when SUSHI mining starts.
     uint256 public startBlock;
     
-
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
@@ -434,7 +433,9 @@ contract MasterChef is Ownable {
     event Add(uint256 rewardForEachBlock, IERC20 lpToken, bool withUpdate,uint256 startBlock,uint256 endBlock);
     event Set(uint256 pid, uint256 rewardsOneBlock, bool withUpdate,uint256 rewardStartBlock,uint256 rewardEndBlock);
     event ClosePool(uint256 pid);
-    event Dev(address devaddr);
+    event DevOne(address devaddr);
+    event DevTwo(address devaddr);
+    event DevThree(address devaddr);
     
     constructor(
         IERC20 _sushi,
@@ -459,10 +460,10 @@ contract MasterChef is Ownable {
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
     function add(uint256 _rewardForEachBlock, IERC20 _lpToken, bool _withUpdate,uint256 _startBlock,uint256 _endBlock) public onlyOwner {
+        
         if (_withUpdate) {
             massUpdatePools();
         }
-      
         poolInfo.push(PoolInfo({
             lpToken: _lpToken,
             rewardForEachBlock:_rewardForEachBlock,
@@ -473,7 +474,6 @@ contract MasterChef is Ownable {
             endBlock:_endBlock,
             rewardDebt:zero
         }));
-        
         emit Add(_rewardForEachBlock, _lpToken, _withUpdate, _startBlock, _endBlock);
     }
 
@@ -512,11 +512,8 @@ contract MasterChef is Ownable {
             return _to.sub(_from);
     }
 
-
-
     // Update reward variables of the given pool to be up-to-date.
     function updatePool(uint256 _pid) public {
-        
         PoolInfo storage pool = poolInfo[_pid];
         if (block.number <= pool.lastRewardBlock) {
             return;
@@ -527,70 +524,52 @@ contract MasterChef is Ownable {
         if (block.number == pool.endBlock){
             return;
         }
-        
-         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (lpSupply == zero) {
             pool.lastRewardBlock = block.number;
             return;
         }
         uint256 multiplier;
         if (block.number > pool.endBlock){
-            
-           multiplier = getMultiplier(pool.lastRewardBlock, pool.endBlock);
-            
-           pool.lastRewardBlock = pool.endBlock;
+            multiplier = getMultiplier(pool.lastRewardBlock, pool.endBlock);
+            pool.lastRewardBlock = pool.endBlock;
         }else{
-             multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-             pool.lastRewardBlock = block.number;
+            multiplier = getMultiplier(pool.lastRewardBlock, block.number);
+            pool.lastRewardBlock = block.number;
         }
-        
         uint256 sushiReward = multiplier.mul(pool.rewardForEachBlock);
          // sushi.mint(devaddr, sushiReward.div(10));
-         
-         
-        transferToDev(_pid, dev1addr, dev1Coefficient,sushiReward);
-        transferToDev(_pid, dev2addr, dev2Coefficient,sushiReward);
-        transferToDev(_pid, dev3addr,dev3Coefficient,sushiReward);
-    
+        transferToDev(_pid, dev1addr, dev1Coefficient, sushiReward);
+        transferToDev(_pid, dev2addr, dev2Coefficient, sushiReward);
+        transferToDev(_pid, dev3addr, dev3Coefficient, sushiReward);
         // sushi.mint(address(this), sushiReward);
         uint256 poolSushiReward = sushiReward.mul(mintCoefficient).div(oneHundred);
         pool.accSushiPerShare = pool.accSushiPerShare.add(poolSushiReward.div(lpSupply));
-        
     }
     
     function transferToDev(uint256 _pid, address devAddr, uint16 devCoefficient, uint256 sushiReward)private{
-        
         PoolInfo storage pool = poolInfo[_pid];
         safeSushiTransfer(devAddr,sushiReward.mul(devCoefficient).div(oneThousand));
         pool.rewardDebt=pool.rewardDebt.add(sushiReward.mul(devCoefficient).div(oneThousand));
-        
     }
-
-
 
     // View function to see pending SUSHIs on frontend.
     function pendingSushi(uint256 _pid, address _user) public view returns (uint256) {
-       
         PoolInfo storage pool =  poolInfo[_pid]; 
         UserInfo storage user = userInfo[_pid][_user];
         uint256 multiplier;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
-        
-       
-        
-        if (block.number>pool.endBlock){
-           multiplier = getMultiplier(pool.lastRewardBlock, pool.endBlock);
-           
+        if (block.number > pool.endBlock){
+            multiplier = getMultiplier(pool.lastRewardBlock, pool.endBlock);
+        }else if (block.number == pool.lastRewardBlock){
+            return user.amount.mul(pool.accSushiPerShare).sub(user.rewardDebt);
         }else{
-             multiplier = getMultiplier(pool.lastRewardBlock, block.number);
+            multiplier = getMultiplier(pool.lastRewardBlock, block.number);
         }
-      
         uint256 sushiReward = multiplier.mul(pool.rewardForEachBlock);
         uint256 poolSushiReward = sushiReward.mul(mintCoefficient).div(oneHundred);
-         
         uint256 accSushiPerShare;
         accSushiPerShare = pool.accSushiPerShare.add(poolSushiReward.div(lpSupply));
-        
         uint256 pending = user.amount.mul(accSushiPerShare).sub(user.rewardDebt);
         return pending;
     }
@@ -605,19 +584,17 @@ contract MasterChef is Ownable {
     // Deposit LP tokens to MasterChef for SUSHI allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
-        
-        if (block.number>pool.endBlock){
+        if (block.number > pool.endBlock){
             return;
         }
-        
-        require(block.number>=pool.startBlock,"this pool is not start !");
+        require(block.number >= pool.startBlock,"this pool is not start !");
         UserInfo storage user = userInfo[_pid][msg.sender];
         // updatePool(_pid);
         // if (user.amount > 0) {
         //     uint256 pending = user.amount.mul(pool.accSushiPerShare).div(multiple).sub(user.rewardDebt);
         //     safeSushiTransfer(msg.sender, pending);
         // }
-        harvest(_pid,msg.sender);
+        harvest(_pid, msg.sender);
         pool.lpToken.transferFrom(address(msg.sender), address(this), _amount);
         user.amount = user.amount.add(_amount);
         user.rewardDebt = user.amount.mul(pool.accSushiPerShare);
@@ -628,10 +605,8 @@ contract MasterChef is Ownable {
     function withdraw(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
-        
         require(block.number >= pool.startBlock,"this pool is not start !");
         require(user.amount >= _amount, "withdraw: not good");
-        
         harvest(_pid,msg.sender);
         // updatePool(_pid);
         // uint256 pending = user.amount.mul(pool.accSushiPerShare).div(1e12).sub(user.rewardDebt);
@@ -640,6 +615,7 @@ contract MasterChef is Ownable {
         user.rewardDebt = user.amount.mul(pool.accSushiPerShare);
         pool.lpToken.transfer(address(msg.sender), _amount);
         emit Withdraw(msg.sender, _pid, _amount);
+        
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
@@ -647,32 +623,29 @@ contract MasterChef is Ownable {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         pool.lpToken.transfer(address(msg.sender), user.amount);
-       
         user.amount = zero;
         user.rewardDebt = zero;
         emit EmergencyWithdraw(msg.sender, _pid, user.amount);
     }
     
-    
+
     function harvest(uint256 _pid, address _to) public returns (bool success) {
         PoolInfo storage pool =  poolInfo[_pid]; 
         UserInfo storage user = userInfo[_pid][_to];
         updatePool(_pid);
         uint256 pending = user.amount.mul(pool.accSushiPerShare).sub(user.rewardDebt);
-        if (pending == zero) { 
-            return success = false; 
-        } else{
+        if (pending != zero) { 
             success = true;
+        } else{
+            return success = false; 
         }
         safeSushiTransfer(_to, pending);
-        pool.rewardDebt=pool.rewardDebt.add(pending);
+        pool.rewardDebt = pool.rewardDebt.add(pending);
         user.rewardDebt = user.amount.mul(pool.accSushiPerShare);
-        
         emit Harvest(_to, _pid, pending);
     }
     
      function emergencyStop(address _to)public onlyOwner{
-        
         uint addrBalance = sushi.balanceOf(address(this));
         sushi.transfer(_to, addrBalance);
         uint256 length = poolInfo.length;
@@ -684,27 +657,32 @@ contract MasterChef is Ownable {
         
     }
     function closePool(uint256 _pid)public onlyOwner{
-        PoolInfo storage pool =  poolInfo[_pid]; 
-        pool.endBlock=block.number;
+        PoolInfo storage pool = poolInfo[_pid]; 
+        pool.endBlock = block.number;
         emit ClosePool(_pid);
     }
     
-
     // Safe sushi transfer function, just in case if rounding error causes pool to not have enough SUSHIs.
     function safeSushiTransfer(address _to, uint256 _amount) internal {
         uint256 sushiBal = sushi.balanceOf(address(this));
-            require(_amount <= sushiBal,"balance not have enough SUSHIS!");
-            sushi.transfer(_to, _amount);
+        require(_amount <= sushiBal,"balance not have enough SUSHIS!");
+        sushi.transfer(_to, _amount);
     }
 
-    // Update dev address by the previous dev.
-    function dev(address _dev1addr,address _dev2addr,address _dev3addr) public {
-        require(msg.sender == dev1addr, "dev: wut?");
-        dev1addr = _dev1addr;
-        dev2addr = _dev2addr;
-        dev3addr = _dev3addr;
-        emit Dev(_dev1addr);
-        emit Dev(_dev2addr);
-        emit Dev(_dev3addr);
+     // Update dev address by the previous dev.
+    function devById(uint _id, address _devAddr) public {
+        if (_id == 1){
+            require(msg.sender == dev1addr, "devOne: wut?");
+            dev1addr = _devAddr;
+            emit DevOne(_devAddr);
+        }else if(_id == 2){
+            require(msg.sender == dev2addr, "devTwo: wut?");
+            dev2addr = _devAddr;
+            emit DevTwo(_devAddr);
+        }else{
+            require(msg.sender == dev3addr, "DevThree: wut?");
+            dev3addr = _devAddr;
+            emit DevThree(_devAddr);
+        }
     }
 }
