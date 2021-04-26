@@ -396,14 +396,12 @@ contract MasterChef is Ownable {
         uint256 rewardDebt;
     }
 
-    uint8 public constant coefficient = 15;
     uint8 public constant zero = 0 ;
     uint16 public constant oneThousand = 1000;
-    uint8 public constant oneHundred = 100;
     uint8 public constant dev1Coefficient = 68;
     uint8 public constant dev2Coefficient = 48;
     uint8 public constant dev3Coefficient = 34;
-    uint8 public constant mintCoefficient = 85;
+    uint16 public constant mintCoefficient = 850;
     // The SUSHI TOKEN!
     IERC20 public sushi;
     // Dev address.
@@ -543,7 +541,7 @@ contract MasterChef is Ownable {
         transferToDev(_pid, dev2addr, dev2Coefficient, sushiReward);
         transferToDev(_pid, dev3addr, dev3Coefficient, sushiReward);
         // sushi.mint(address(this), sushiReward);
-        uint256 poolSushiReward = sushiReward.mul(mintCoefficient).div(oneHundred);
+        uint256 poolSushiReward = sushiReward.mul(mintCoefficient).div(oneThousand);
         pool.accSushiPerShare = pool.accSushiPerShare.add(poolSushiReward.div(lpSupply));
     }
     
@@ -568,7 +566,7 @@ contract MasterChef is Ownable {
             multiplier = getMultiplier(pool.lastRewardBlock, block.number);
         }
         uint256 sushiReward = multiplier.mul(pool.rewardForEachBlock);
-        uint256 poolSushiReward = sushiReward.mul(mintCoefficient).div(oneHundred);
+        uint256 poolSushiReward = sushiReward.mul(mintCoefficient).div(oneThousand);
         uint256 accSushiPerShare;
         accSushiPerShare = pool.accSushiPerShare.add(poolSushiReward.div(lpSupply));
         uint256 pending = user.amount.mul(accSushiPerShare).sub(user.rewardDebt);
