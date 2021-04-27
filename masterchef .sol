@@ -353,6 +353,7 @@ contract MasterChef is Ownable {
     // Info of each pool.
     struct PoolInfo {
         IERC20 lpToken;           // Address of LP token contract.
+        uint256 amount;     // How many LP tokens the pool has.
         // uint256 allocPoint;       // How many allocation points assigned to this pool. SUSHIs to distribute per block.
         uint256 rewardForEachBlock;    //Reward for each block
         uint256 lastRewardBlock;  // Last block number that SUSHIs distribution occurs.
@@ -427,6 +428,7 @@ contract MasterChef is Ownable {
         }
         poolInfo.push(PoolInfo({
             lpToken: _lpToken,
+            amount: ZERO,
             rewardForEachBlock: _rewardForEachBlock,
             lastRewardBlock: _startBlock,
             accSushiPerShare: ZERO,
@@ -449,7 +451,7 @@ contract MasterChef is Ownable {
     }
 
     // Return reward multiplier over the given _from to _to block.
-    function getMultiplier(uint256 _from, uint256 _to) private pure returns (uint256) {
+    function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
         if(_to > _from){
             return _to.sub(_from);
         }
@@ -532,6 +534,7 @@ contract MasterChef is Ownable {
         UserInfo storage user = userInfo[_pid][msg.sender];
         harvest(_pid, msg.sender);
         pool.lpToken.transferFrom(address(msg.sender), address(this), _amount);
+        pool.amount = pool.amount.add(_amount);
         user.amount = user.amount.add(_amount);
         user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION);
         emit Deposit(msg.sender, _pid, _amount);
@@ -547,6 +550,7 @@ contract MasterChef is Ownable {
         user.amount = user.amount.sub(_amount);
         user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION);
         pool.lpToken.transfer(address(msg.sender), _amount);
+        pool.amount = pool.amount.sub(_amount);
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
@@ -555,6 +559,7 @@ contract MasterChef is Ownable {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         pool.lpToken.transfer(address(msg.sender), user.amount);
+        pool.amount = pool.amount.sub(user.amount);
         user.amount = ZERO;
         user.rewardDebt = ZERO;
         emit EmergencyWithdraw(msg.sender, _pid, user.amount);
