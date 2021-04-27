@@ -422,7 +422,6 @@ contract MasterChef is Ownable {
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
     function add(uint256 _rewardForEachBlock, IERC20 _lpToken, bool _withUpdate, uint256 _startBlock, uint256 _endBlock) public onlyOwner {
-        
         if (_withUpdate) {
             massUpdatePools();
         }
@@ -500,7 +499,8 @@ contract MasterChef is Ownable {
         PoolInfo storage pool =  poolInfo[_pid]; 
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accSushiPerShare = pool.accSushiPerShare;
-        if (block.number > pool.lastRewardBlock){
+        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        if (block.number > pool.lastRewardBlock && lpSupply != 0){
             uint256 multiplier = 0;
             if (block.number > pool.endBlock){
                 if(pool.lastRewardBlock < pool.endBlock){
@@ -511,7 +511,6 @@ contract MasterChef is Ownable {
             }
             uint256 sushiReward = multiplier.mul(pool.rewardForEachBlock);
             uint256 poolSushiReward = sushiReward.mul(MINT_COEFFICIENT).div(ONE_THOUSAND);
-            uint256 lpSupply = pool.lpToken.balanceOf(address(this));
             accSushiPerShare = pool.accSushiPerShare.add(poolSushiReward.mul(ACC_SUSHI_PRECISION).div(lpSupply));
         }
         return user.amount.mul(accSushiPerShare).div(ACC_SUSHI_PRECISION).sub(user.rewardDebt);
