@@ -449,7 +449,7 @@ contract MasterChef is Ownable {
     }
 
     // Return reward multiplier over the given _from to _to block.
-    function getMultiplier(uint256 _from, uint256 _to) public pure returns (uint256) {
+    function getMultiplier(uint256 _from, uint256 _to) private pure returns (uint256) {
         if(_to > _from){
             return _to.sub(_from);
         }
