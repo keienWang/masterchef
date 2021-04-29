@@ -451,7 +451,7 @@ contract MasterChef is Ownable {
     }
 
     // Return reward multiplier over the given _from to _to block.
-    function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
+    function getMultiplier(uint256 _from, uint256 _to) public pure returns (uint256) {
         if(_to > _from){
             return _to.sub(_from);
         }
@@ -490,7 +490,7 @@ contract MasterChef is Ownable {
         pool.accSushiPerShare = pool.accSushiPerShare.add(poolSushiReward.mul(ACC_SUSHI_PRECISION).div(lpSupply));
     }
     
-    function transferToDev(uint256 _pid, address devAddr, uint16 devCoefficient, uint256 sushiReward)private{
+    function transferToDev(uint256 _pid, address devAddr, uint16 devCoefficient, uint256 sushiReward) private {
         PoolInfo storage pool = poolInfo[_pid];
         safeSushiTransfer(devAddr, sushiReward.mul(devCoefficient).div(ONE_THOUSAND));
         pool.rewardDebt = pool.rewardDebt.add(sushiReward.mul(devCoefficient).div(ONE_THOUSAND));
@@ -560,9 +560,10 @@ contract MasterChef is Ownable {
         UserInfo storage user = userInfo[_pid][msg.sender];
         pool.lpToken.transfer(address(msg.sender), user.amount);
         pool.amount = pool.amount.sub(user.amount);
+        uint256 oldAmount = user.amount;
         user.amount = ZERO;
         user.rewardDebt = ZERO;
-        emit EmergencyWithdraw(msg.sender, _pid, user.amount);
+        emit EmergencyWithdraw(msg.sender, _pid, oldAmount);
     }
     
     function harvest(uint256 _pid, address _to) public returns (bool success) {
@@ -581,7 +582,7 @@ contract MasterChef is Ownable {
         emit Harvest(_to, _pid, pending);
     }
     
-     function emergencyStop(address _to) public onlyOwner{
+     function emergencyStop(address _to) public onlyOwner {
         uint addrBalance = sushi.balanceOf(address(this));
         sushi.transfer(_to, addrBalance);
         uint256 length = poolInfo.length;
@@ -591,7 +592,7 @@ contract MasterChef is Ownable {
         emit EmergencyStop(msg.sender, _to, addrBalance);
     }
     
-    function closePool(uint256 _pid) public onlyOwner{
+    function closePool(uint256 _pid) public onlyOwner {
         PoolInfo storage pool = poolInfo[_pid]; 
         pool.endBlock = block.number;
         emit ClosePool(_pid);
