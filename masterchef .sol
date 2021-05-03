@@ -405,6 +405,7 @@ contract MasterChef is Ownable {
     event Dev1(address dev1addr);
     event Dev2(address dev2addr);
     event Dev3(address dev3addr);
+    event AddRewardForPool(uint256 pid, uint256 addSushi);
     
     constructor(
         IERC20 _sushi,
@@ -548,8 +549,8 @@ contract MasterChef is Ownable {
     // Deposit LP tokens to MasterChef for SUSHI allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
-        require(block.number <= pool.endBlock,"this pool is end!");
-        require(block.number >= pool.startBlock,"this pool is not start!");
+        require(block.number <= pool.endBlock, "this pool is end!");
+        require(block.number >= pool.startBlock, "this pool is not start!");
         UserInfo storage user = userInfo[_pid][msg.sender];
         harvest(_pid, msg.sender);
         pool.lpToken.transferFrom(address(msg.sender), address(this), _amount);
@@ -662,5 +663,24 @@ contract MasterChef is Ownable {
         require(_dev3addr != address(0), "address can not be zero!");
         dev3addr = _dev3addr;
         emit Dev3(_dev3addr);
+    }
+    
+    // Add reward for pool, add from the next block, need to tranfer sushi in another threadhold 
+    function addRewardForPool(uint256 _pid, uint256 _addSushi) public onlyOwner {
+        require(_addSushi > 0, "add sushi must be greater than zero!");
+        PoolInfo storage pool = poolInfo[_pid];
+        require(block.number < pool.endBlock, "this pool is going to be end or end!");
+        updatePool(_pid);
+        uint256 start = block.number;
+        uint256 end = pool.endBlock;
+        if(start < pool.startBlock){
+            start = pool.startBlock.sub(1);
+        }
+        uint256 blockNumber = end.sub(start);
+        if(blockNumber == 0){
+            blockNumber = 1;
+        }
+        pool.accSushiPerShare = pool.accSushiPerShare.add(_addSushi.mul(ACC_SUSHI_PRECISION).div(blockNumber));
+        emit AddRewardForPool(_pid, _addSushi);
     }
 }
