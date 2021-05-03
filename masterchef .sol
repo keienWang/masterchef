@@ -354,13 +354,15 @@ contract MasterChef is Ownable {
     struct PoolInfo {
         IERC20 lpToken;           // Address of LP token contract.
         uint256 amount;     // How many LP tokens the pool has.
-        // uint256 allocPoint;       // How many allocation points assigned to this pool. SUSHIs to distribute per block.
         uint256 rewardForEachBlock;    //Reward for each block
         uint256 lastRewardBlock;  // Last block number that SUSHIs distribution occurs.
         uint256 accSushiPerShare; // Accumulated SUSHIs per share, times 1e12. See below.
         uint256 startBlock; // Reward start block.
         uint256 endBlock;  // Reward end block.
-        uint256 rewarded;// the total sushi has beed reward
+        uint256 rewarded;// the total sushi has beed reward, including the dev and user harvest
+        
+        uint256 operationFee;// Charged when user operate the pool, only deposit firstly.
+        address operationFeeToken;
     }
     
     uint256 private constant ACC_SUSHI_PRECISION = 1e12;
@@ -397,8 +399,8 @@ contract MasterChef is Ownable {
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event Harvest(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyStop(address indexed user, address to, uint256 amount);
-    event Add(uint256 rewardForEachBlock, IERC20 lpToken, bool withUpdate, uint256 startBlock, uint256 endBlock);
-    event Set(uint256 pid, uint256 rewardsOneBlock, bool withUpdate, uint256 rewardStartBlock, uint256 rewardEndBlock);
+    event Add(uint256 rewardForEachBlock, IERC20 lpToken, bool withUpdate, uint256 startBlock, uint256 endBlock, uint256 operationFee, address operationFeeToken);
+    event Set(uint256 pid, uint256 rewardsOneBlock, bool withUpdate, uint256 startBlock, uint256 endBlock, uint256 operationFee, address operationFeeToken);
     event ClosePool(uint256 pid);
     event Dev1(address dev1addr);
     event Dev2(address dev2addr);
@@ -422,7 +424,8 @@ contract MasterChef is Ownable {
 
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
-    function add(uint256 _rewardForEachBlock, IERC20 _lpToken, bool _withUpdate, uint256 _startBlock, uint256 _endBlock) public onlyOwner {
+    function add(uint256 _rewardForEachBlock, IERC20 _lpToken, bool _withUpdate, 
+    uint256 _startBlock, uint256 _endBlock, uint256 _operationFee, address _operationFeeToken) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
         }
@@ -434,20 +437,35 @@ contract MasterChef is Ownable {
             accSushiPerShare: ZERO,
             startBlock: _startBlock,
             endBlock: _endBlock,
-            rewarded: ZERO
+            rewarded: ZERO,
+            operationFee: _operationFee,
+            operationFeeToken: _operationFeeToken
         }));
-        emit Add(_rewardForEachBlock, _lpToken, _withUpdate, _startBlock, _endBlock);
+        emit Add(_rewardForEachBlock, _lpToken, _withUpdate, _startBlock, _endBlock, _operationFee, _operationFeeToken);
     }
 
     // Update the given pool's SUSHI allocation point. Can only be called by the owner.
-    function set(uint256 _pid, uint256 _rewardForEachBlock, bool _withUpdate, uint256 _startBlock, uint256 _endBlock) public onlyOwner {
+    function set(uint256 _pid, uint256 _rewardForEachBlock, bool _withUpdate, 
+    uint256 _startBlock, uint256 _endBlock, uint256 _operationFee, address _operationFeeToken) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
         }
-        poolInfo[_pid].rewardForEachBlock = _rewardForEachBlock;
-        poolInfo[_pid].startBlock = _startBlock;
-        poolInfo[_pid].endBlock = _endBlock;
-        emit Set(_pid, _rewardForEachBlock, _withUpdate, _startBlock, _endBlock);
+        if(_rewardForEachBlock > 0){
+            poolInfo[_pid].rewardForEachBlock = _rewardForEachBlock;
+        }
+        if(_startBlock > 0){
+            poolInfo[_pid].startBlock = _startBlock;
+        }
+        if(_endBlock > 0){
+            poolInfo[_pid].endBlock = _endBlock;
+        }
+        if(_operationFee > 0){
+            poolInfo[_pid].operationFee = _operationFee;
+        }
+        if(_operationFeeToken != address(0)){
+            poolInfo[_pid].operationFeeToken = _operationFeeToken;
+        }
+        emit Set(_pid, _rewardForEachBlock, _withUpdate, _startBlock, _endBlock, _operationFee, _operationFeeToken);
     }
 
     // Return reward multiplier over the given _from to _to block.
@@ -538,7 +556,20 @@ contract MasterChef is Ownable {
         pool.amount = pool.amount.add(_amount);
         user.amount = user.amount.add(_amount);
         user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION);
+        checkOperationFee(pool);
         emit Deposit(msg.sender, _pid, _amount);
+    }
+    
+    function checkOperationFee(PoolInfo storage _pool) private {
+        if(_pool.operationFee > 0 && _pool.operationFeeToken != address(0)){//charge for fee
+            //TODO Test, address or IERC20 type is better for pool.operationFeeToken
+            IERC20(_pool.operationFeeToken).transferFrom(address(msg.sender), address(this), _pool.operationFee);
+            uint256 dev1Amount = _pool.operationFee.mul(500).div(ONE_THOUSAND);
+            uint256 dev2Amount = _pool.operationFee.mul(250).div(ONE_THOUSAND);
+            IERC20(_pool.operationFeeToken).transferFrom(address(this), dev1addr, dev1Amount);
+            IERC20(_pool.operationFeeToken).transferFrom(address(this), dev2addr, dev2Amount);
+            IERC20(_pool.operationFeeToken).transferFrom(address(this), dev3addr, _pool.operationFee - dev1Amount - dev2Amount);
+        }
     }
 
     // Withdraw LP tokens from MasterChef.
