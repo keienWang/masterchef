@@ -360,7 +360,7 @@ contract MasterChef is Ownable {
         uint256 accSushiPerShare; // Accumulated SUSHIs per share, times 1e12. See below.
         uint256 startBlock; // Reward start block.
         uint256 endBlock;  // Reward end block.
-        uint256 rewardDebt;
+        uint256 rewarded;// the total sushi has beed reward
     }
     
     uint256 private constant ACC_SUSHI_PRECISION = 1e12;
@@ -434,7 +434,7 @@ contract MasterChef is Ownable {
             accSushiPerShare: ZERO,
             startBlock: _startBlock,
             endBlock: _endBlock,
-            rewardDebt: ZERO
+            rewarded: ZERO
         }));
         emit Add(_rewardForEachBlock, _lpToken, _withUpdate, _startBlock, _endBlock);
     }
@@ -492,8 +492,9 @@ contract MasterChef is Ownable {
     
     function transferToDev(uint256 _pid, address devAddr, uint16 devCoefficient, uint256 sushiReward) private {
         PoolInfo storage pool = poolInfo[_pid];
-        safeSushiTransfer(devAddr, sushiReward.mul(devCoefficient).div(ONE_THOUSAND));
-        pool.rewardDebt = pool.rewardDebt.add(sushiReward.mul(devCoefficient).div(ONE_THOUSAND));
+        uint256 amount = sushiReward.mul(devCoefficient).div(ONE_THOUSAND);
+        safeSushiTransfer(devAddr, amount);
+        pool.rewarded = pool.rewarded.add(amount);
     }
 
     // View function to see pending SUSHIs on frontend.
@@ -574,7 +575,7 @@ contract MasterChef is Ownable {
         if (pending != ZERO) { 
             success = true;
             safeSushiTransfer(_to, pending);
-            pool.rewardDebt = pool.rewardDebt.add(pending);
+            pool.rewarded = pool.rewarded.add(pending);
             user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION);
         } else{
             success = false; 
