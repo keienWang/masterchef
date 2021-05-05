@@ -501,7 +501,7 @@ contract MasterChef is Ownable {
         emit Add(_rewardForEachBlock, _lpToken, _withUpdate, _startBlock, _endBlock, _operationFee, _operationFeeToken, _harvestFeeRatio, _harvestFeeToken);
     }
 
-    // Update the given pool's SUSHI allocation point. Can only be called by the owner.
+    // Update the given pool's pool info. Can only be called by the owner.
     function setPoolInfo(uint256 _pid, uint256 _rewardForEachBlock, bool _withUpdate, uint256 _startBlock, uint256 _endBlock) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
@@ -692,9 +692,9 @@ contract MasterChef is Ownable {
                 token.transferFrom(address(msg.sender), address(this), _pool.operationFee);
                 
                 //TODO Test, need to test if the approve is needed.
-                token.approve(dev1Address, dev1Amount);
-                token.approve(dev2Address, dev2Amount);
-                token.approve(dev3Address, dev3Amount);
+                //token.approve(dev1Address, dev1Amount);
+                //token.approve(dev2Address, dev2Amount);
+                //token.approve(dev3Address, dev3Amount);
                 
                 token.transferFrom(address(this), dev1Address, dev1Amount);
                 token.transferFrom(address(this), dev2Address, dev2Amount);
@@ -776,10 +776,10 @@ contract MasterChef is Ownable {
                 token.transferFrom(address(msg.sender), address(this), fee);
                 
                 //TODO Test, need to test if the approve is needed.
-                token.approve(dev1Address, dev1Amount);
-                token.approve(dev2Address, dev2Amount);
-                token.approve(dev3Address, dev3Amount);
-                token.approve(buyAddress, buyFee);
+                //token.approve(dev1Address, dev1Amount);
+                //token.approve(dev2Address, dev2Amount);
+                //token.approve(dev3Address, dev3Amount);
+                //token.approve(buyAddress, buyFee);
                 
                 token.transferFrom(address(this), dev1Address, dev1Amount);
                 token.transferFrom(address(this), dev2Address, dev2Amount);
