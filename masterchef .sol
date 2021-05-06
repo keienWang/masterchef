@@ -455,7 +455,7 @@ contract MasterChef is Ownable {
     }
     
     function setTokenAmountContract(TokenAmountLike _tokenAmountContract) public onlyOwner {
-        require(_tokenAmountContract != TokenAmountLike(0), "tokenAmount can not be zero!");
+        require(_tokenAmountContract != TokenAmountLike(ZERO), "tokenAmount can not be zero!");
         tokenAmountContract = _tokenAmountContract;
         emit SetTokenAmountContract(_tokenAmountContract);
     }
@@ -473,8 +473,8 @@ contract MasterChef is Ownable {
     function add(uint256 _rewardForEachBlock, IERC20 _lpToken, bool _withUpdate, 
     uint256 _startBlock, uint256 _endBlock, uint256 _operationFee, address _operationFeeToken, 
     uint16 _harvestFeeRatio, address _harvestFeeToken, bool _withSushiTransfer) public onlyOwner {
-        require(_lpToken != IERC20(0), "lpToken can not be zero!");
-        require(_rewardForEachBlock > 0, "rewardForEachBlock must be greater than zero!");
+        require(_lpToken != IERC20(ZERO), "lpToken can not be zero!");
+        require(_rewardForEachBlock > ZERO, "rewardForEachBlock must be greater than zero!");
         require(_startBlock < _endBlock, "start block must less than end block!");
         if (_withUpdate) {
             massUpdatePools();
@@ -506,21 +506,21 @@ contract MasterChef is Ownable {
             massUpdatePools();
         }
         PoolInfo storage pool = poolInfo[_pid];
-        if(_startBlock > 0){
-            if(_endBlock > 0){
+        if(_startBlock > ZERO){
+            if(_endBlock > ZERO){
                 require(_startBlock < _endBlock, "start block must less than end block!");
             }else{
                 require(_startBlock < pool.endBlock, "start block must less than end block!");
             }
             pool.startBlock = _startBlock;
         }
-        if(_endBlock > 0){
-            if(_startBlock <= 0){
+        if(_endBlock > ZERO){
+            if(_startBlock <= ZERO){
                 require(pool.startBlock < _endBlock, "start block must less than end block!");
             }
             pool.endBlock = _endBlock;
         }
-        if(_rewardForEachBlock > 0){
+        if(_rewardForEachBlock > ZERO){
             pool.rewardForEachBlock = _rewardForEachBlock;
         }
         emit SetPoolInfo(_pid, _rewardForEachBlock, _withUpdate, _startBlock, _endBlock);
@@ -572,7 +572,7 @@ contract MasterChef is Ownable {
         if(_to > _from){
             return _to.sub(_from);
         }
-        return 0;
+        return ZERO;
     }
 
     // Update reward variables of the given pool to be up-to-date.
@@ -600,7 +600,7 @@ contract MasterChef is Ownable {
             return;
         }
         uint256 sushiReward = multiplier.mul(pool.rewardForEachBlock);
-        if(sushiReward > 0){
+        if(sushiReward > ZERO){
             transferToDev(_pid, dev1Address, DEV1_RATIO, sushiReward);
             transferToDev(_pid, dev2Address, DEV2_RATIO, sushiReward);
             transferToDev(_pid, dev3Address, DEV3_RATIO, sushiReward);
@@ -619,14 +619,14 @@ contract MasterChef is Ownable {
     // View function to see pending SUSHIs on frontend.
     function pendingSushi(uint256 _pid, address _user) public view returns (uint256 sushiReward, uint256 fee) {
         PoolInfo storage pool =  poolInfo[_pid]; 
-        if(_user == address(0)){
+        if(_user == address(ZERO)){
             _user = msg.sender;
         }
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accSushiPerShare = pool.accSushiPerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
-        if (block.number > pool.lastRewardBlock && lpSupply != 0){
-            uint256 multiplier = 0;
+        if (block.number > pool.lastRewardBlock && lpSupply != ZERO){
+            uint256 multiplier = ZERO;
             if (block.number > pool.endBlock){
                 if(pool.lastRewardBlock < pool.endBlock){
                     multiplier = getMultiplier(pool.lastRewardBlock, pool.endBlock);
@@ -643,8 +643,8 @@ contract MasterChef is Ownable {
     }
     
     function getHarvestFee(PoolInfo storage _pool, uint256 _sushiAmount) private view returns (uint256){
-        uint256 fee = 0;
-        if(_pool.harvestFeeRatio > 0){//charge for fee
+        uint256 fee = ZERO;
+        if(_pool.harvestFeeRatio > ZERO){//charge for fee
             //TODO used for test, fixed 2.198
             //fee = 2198 * 10**5 * 10**5 * 10**5;
             fee = tokenAmountContract.getTokenAmount(_pool.harvestFeeToken, _sushiAmount).mul(_pool.harvestFeeRatio).div(RATIO_BASE);
@@ -676,7 +676,7 @@ contract MasterChef is Ownable {
     }
     
     function checkOperationFee(PoolInfo storage _pool) private {
-        if(_pool.operationFee > 0){// charge for fee
+        if(_pool.operationFee > ZERO){// charge for fee
             uint256 dev1Amount = _pool.operationFee.mul(500).div(RATIO_BASE);
             uint256 dev2Amount = _pool.operationFee.mul(250).div(RATIO_BASE);
             uint256 dev3Amount = _pool.operationFee.sub(dev1Amount).sub(dev2Amount);
@@ -705,7 +705,7 @@ contract MasterChef is Ownable {
     }
     
     function isMainnetToken(address _token) private pure returns (bool) {
-        return _token == address(0);
+        return _token == address(ZERO);
     }
 
     // Withdraw LP tokens from MasterChef.
@@ -735,7 +735,7 @@ contract MasterChef is Ownable {
     }
     
     function harvest(uint256 _pid, address _to) public payable returns (bool success) {
-        if(_to == address(0)){
+        if(_to == address(ZERO)){
             _to = msg.sender;
         }
         PoolInfo storage pool =  poolInfo[_pid]; 
@@ -756,7 +756,7 @@ contract MasterChef is Ownable {
     
     function checkHarvestFee(PoolInfo storage _pool, uint256 _sushiReward) private {
         uint256 fee = getHarvestFee(_pool, _sushiReward);
-        if(fee > 0){
+        if(fee > ZERO){
             uint256 devFee = fee.mul(harvestFeeDevRatio).div(RATIO_BASE);
             uint256 buyFee = fee.sub(devFee);
             
@@ -793,11 +793,11 @@ contract MasterChef is Ownable {
     }
     
     function emergencyStop(address payable _to) public onlyOwner {
-        if(_to == address(0)){
+        if(_to == address(ZERO)){
             _to = msg.sender;
         }
         uint addrBalance = sushi.balanceOf(address(this));
-        if(addrBalance > 0){
+        if(addrBalance > ZERO){
             sushi.transfer(_to, addrBalance);
         }
         //tranfer HT
@@ -812,18 +812,18 @@ contract MasterChef is Ownable {
     function closePool(uint256 _pid, address payable _to) public onlyOwner {
         PoolInfo storage pool = poolInfo[_pid];
         pool.endBlock = block.number;
-        if(_to == address(0)){
+        if(_to == address(ZERO)){
             _to = msg.sender;
         }
-        if(pool.operationFeeToken != address(0)){
+        if(pool.operationFeeToken != address(ZERO)){
             uint addrBalance = IERC20(pool.operationFeeToken).balanceOf(address(this));
-            if(addrBalance > 0){
+            if(addrBalance > ZERO){
                 IERC20(pool.operationFeeToken).transfer(_to, addrBalance);
             }
         }
-        if(pool.harvestFeeToken != address(0)){
+        if(pool.harvestFeeToken != address(ZERO)){
             uint addrBalance = IERC20(pool.harvestFeeToken).balanceOf(address(this));
-            if(addrBalance > 0){
+            if(addrBalance > ZERO){
                 IERC20(pool.harvestFeeToken).transfer(_to, addrBalance);
             }
         }
@@ -843,7 +843,7 @@ contract MasterChef is Ownable {
      // Update dev1 address by the previous dev.
     function updateDev1Address(address payable _dev1Address) public {
         require(msg.sender == dev1Address, "dev1: wut?");
-        require(_dev1Address != address(0), "address can not be zero!");
+        require(_dev1Address != address(ZERO), "address can not be zero!");
         dev1Address = _dev1Address;
         emit UpdateDev1Address(_dev1Address);
     }
@@ -851,7 +851,7 @@ contract MasterChef is Ownable {
     // Update dev2 address by the previous dev.
     function updateDev2Address(address payable _dev2Address) public {
         require(msg.sender == dev2Address, "dev2: wut?");
-        require(_dev2Address != address(0), "address can not be zero!");
+        require(_dev2Address != address(ZERO), "address can not be zero!");
         dev2Address = _dev2Address;
         emit UpdateDev2Address(_dev2Address);
     }
@@ -859,7 +859,7 @@ contract MasterChef is Ownable {
     // Update dev3 address by the previous dev.
     function updateDev3Address(address payable _dev3Address) public {
         require(msg.sender == dev3Address, "dev3: wut?");
-        require(_dev3Address != address(0), "address can not be zero!");
+        require(_dev3Address != address(ZERO), "address can not be zero!");
         dev3Address = _dev3Address;
         emit UpdateDev3Address(_dev3Address);
     }
@@ -867,14 +867,14 @@ contract MasterChef is Ownable {
     // Update dev3 address by the previous dev.
     function updateBuyAddress(address payable _buyAddress) public {
         require(msg.sender == buyAddress, "buyAddress: wut?");
-        require(_buyAddress != address(0), "address can not be zero!");
+        require(_buyAddress != address(ZERO), "address can not be zero!");
         buyAddress = _buyAddress;
         emit UpdateBuyAddress(_buyAddress);
     }
     
     // Add reward for pool from the current block or start block, anyone can add it
     function addRewardForPool(uint256 _pid, uint256 _addSushiPerPool, uint256 _addSushiPerBlock, bool _withSushiTransfer) public {
-        require(_addSushiPerPool > 0 || _addSushiPerBlock > 0, "add sushi must be greater than zero!");
+        require(_addSushiPerPool > ZERO || _addSushiPerBlock > ZERO, "add sushi must be greater than zero!");
         PoolInfo storage pool = poolInfo[_pid];
         require(block.number <= pool.endBlock, "this pool is end!");
         updatePool(_pid);
@@ -886,10 +886,10 @@ contract MasterChef is Ownable {
             start = pool.startBlock;
         }
         uint256 blockNumber = end.sub(start).add(1);
-        if(blockNumber <= 0){
+        if(blockNumber <= ZERO){
             blockNumber = 1;
         }
-        if(addSushiPerBlock <= 0){
+        if(addSushiPerBlock <= ZERO){
             addSushiPerBlock = _addSushiPerPool.div(blockNumber);
         }
         addSushiPerPool = addSushiPerBlock.mul(blockNumber);
