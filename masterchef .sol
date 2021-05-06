@@ -495,7 +495,7 @@ contract MasterChef is Ownable {
         }));
         if(_withSushiTransfer){
             uint256 amount = (_endBlock - (block.number > _startBlock ? block.number : _startBlock)).add(1).mul(_rewardForEachBlock);
-            sushi.transferFrom(address(msg.sender), address(this), amount);
+            sushi.transferFrom(msg.sender, address(this), amount);
         }
         emit Add(_rewardForEachBlock, _lpToken, _withUpdate, _startBlock, _endBlock, _operationFee, _operationFeeToken, _harvestFeeRatio, _harvestFeeToken, _withSushiTransfer);
     }
@@ -668,7 +668,7 @@ contract MasterChef is Ownable {
         checkOperationFee(pool);
         UserInfo storage user = userInfo[_pid][msg.sender];
         harvest(_pid, msg.sender);
-        pool.lpToken.transferFrom(address(msg.sender), address(this), _amount);
+        pool.lpToken.transferFrom(msg.sender, address(this), _amount);
         pool.amount = pool.amount.add(_amount);
         user.amount = user.amount.add(_amount);
         user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION);
@@ -687,10 +687,10 @@ contract MasterChef is Ownable {
                 dev3Address.transfer(dev3Amount);
             }else{
                 IERC20 token = IERC20(_pool.operationFeeToken);
-                uint feeBalance = token.balanceOf(address(msg.sender));
+                uint feeBalance = token.balanceOf(msg.sender);
                 require(feeBalance >= _pool.operationFee, "Fee is not enough!");
                 //TODO Test, address or IERC20 type is better for pool.operationFeeToken
-                token.transferFrom(address(msg.sender), address(this), _pool.operationFee);
+                token.transferFrom(msg.sender, address(this), _pool.operationFee);
                 
                 //TODO Test, need to test if the approve is needed.
                 //token.approve(dev1Address, dev1Amount);
@@ -717,7 +717,7 @@ contract MasterChef is Ownable {
         harvest(_pid, msg.sender);
         user.amount = user.amount.sub(_amount);
         user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION);
-        pool.lpToken.transfer(address(msg.sender), _amount);
+        pool.lpToken.transfer(msg.sender, _amount);
         pool.amount = pool.amount.sub(_amount);
         emit Withdraw(msg.sender, _pid, _amount);
     }
@@ -726,7 +726,7 @@ contract MasterChef is Ownable {
     function emergencyWithdraw(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
-        pool.lpToken.transfer(address(msg.sender), user.amount);
+        pool.lpToken.transfer(msg.sender, user.amount);
         pool.amount = pool.amount.sub(user.amount);
         uint256 oldAmount = user.amount;
         user.amount = ZERO;
@@ -735,6 +735,9 @@ contract MasterChef is Ownable {
     }
     
     function harvest(uint256 _pid, address _to) public payable returns (bool success) {
+        if(_to == address(0)){
+            _to = msg.sender;
+        }
         PoolInfo storage pool =  poolInfo[_pid]; 
         UserInfo storage user = userInfo[_pid][_to];
         updatePool(_pid);
@@ -742,9 +745,6 @@ contract MasterChef is Ownable {
         if (pending != ZERO) {
             success = true;
             checkHarvestFee(pool, pending);
-            if(_to == address(0)){
-                _to = msg.sender;
-            }
             safeTransferTokenFromThis(sushi, _to, pending);
             pool.rewarded = pool.rewarded.add(pending);
             user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION);
@@ -773,10 +773,10 @@ contract MasterChef is Ownable {
                 buyAddress.transfer(buyFee);
             }else{
                 IERC20 token = IERC20(_pool.harvestFeeToken);
-                uint feeBalance = token.balanceOf(address(msg.sender));
+                uint feeBalance = token.balanceOf(msg.sender);
                 require(feeBalance >= fee, "Fee is not enough!");
                 //TODO Test, address or IERC20 type is better for pool.harvestFeeToken
-                token.transferFrom(address(msg.sender), address(this), fee);
+                token.transferFrom(msg.sender, address(this), fee);
                 
                 //TODO Test, need to test if the approve is needed.
                 //token.approve(dev1Address, dev1Amount);
@@ -895,7 +895,7 @@ contract MasterChef is Ownable {
         addSushiPerPool = addSushiPerBlock.mul(blockNumber);
         pool.rewardForEachBlock = pool.rewardForEachBlock.add(addSushiPerBlock);
         if(_withSushiTransfer){
-            sushi.transferFrom(address(msg.sender), address(this), addSushiPerPool);
+            sushi.transferFrom(msg.sender, address(this), addSushiPerPool);
         }
         emit AddRewardForPool(_pid, addSushiPerPool, addSushiPerBlock, _withSushiTransfer);
     }
