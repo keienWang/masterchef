@@ -624,6 +624,9 @@ contract MasterChef is Ownable {
     // View function to see pending SUSHIs on frontend.
     function pendingSushi(uint256 _pid, address _user) public view returns (uint256 sushiReward, uint256 fee) {
         PoolInfo storage pool =  poolInfo[_pid]; 
+        if(_user == address(0)){
+            _user = msg.sender;
+        }
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accSushiPerShare = pool.accSushiPerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
@@ -745,7 +748,7 @@ contract MasterChef is Ownable {
             success = true;
             checkHarvestFee(pool, pending);
             if(_to == address(0)){
-                _to = address(msg.sender);
+                _to = msg.sender;
             }
             safeTransferTokenFromThis(sushi, _to, pending);
             pool.rewarded = pool.rewarded.add(pending);
