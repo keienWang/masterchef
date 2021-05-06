@@ -614,7 +614,7 @@ contract MasterChef is Ownable {
     function transferToDev(uint256 _pid, address devAddr, uint16 devRatio, uint256 sushiReward) private returns (uint256 amount){
         PoolInfo storage pool = poolInfo[_pid];
         amount = sushiReward.mul(devRatio).div(RATIO_BASE);
-        safeSushiTransfer(devAddr, amount);
+        safeTransferTokenFromThis(sushi, devAddr, amount);
         pool.rewarded = pool.rewarded.add(amount);
     }
 
@@ -696,9 +696,9 @@ contract MasterChef is Ownable {
                 //token.approve(dev2Address, dev2Amount);
                 //token.approve(dev3Address, dev3Amount);
                 
-                token.transferFrom(address(this), dev1Address, dev1Amount);
-                token.transferFrom(address(this), dev2Address, dev2Amount);
-                token.transferFrom(address(this), dev3Address, dev3Amount);
+                token.transfer(dev1Address, dev1Amount);
+                token.transfer(dev2Address, dev2Amount);
+                token.transfer(dev3Address, dev3Amount);
             }
         }
     }
@@ -742,7 +742,7 @@ contract MasterChef is Ownable {
             checkHarvestFee(pool, pending);
             
             success = true;
-            safeSushiTransfer(_to, pending);
+            safeTransferTokenFromThis(sushi, _to, pending);
             pool.rewarded = pool.rewarded.add(pending);
             user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION);
         } else{
@@ -781,10 +781,10 @@ contract MasterChef is Ownable {
                 //token.approve(dev3Address, dev3Amount);
                 //token.approve(buyAddress, buyFee);
                 
-                token.transferFrom(address(this), dev1Address, dev1Amount);
-                token.transferFrom(address(this), dev2Address, dev2Amount);
-                token.transferFrom(address(this), dev3Address, dev3Amount);
-                token.transferFrom(address(this), buyAddress, buyFee);
+                token.transfer(dev1Address, dev1Amount);
+                token.transfer(dev2Address, dev2Amount);
+                token.transfer(dev3Address, dev3Amount);
+                token.transfer(buyAddress, buyFee);
             }
         }
     }
@@ -837,13 +837,13 @@ contract MasterChef is Ownable {
         emit ClosePool(_pid);
     }
     
-    // Safe sushi transfer function, just in case if rounding error causes pool to not have enough SUSHIs.
-    function safeSushiTransfer(address _to, uint256 _amount) internal {
-        uint256 sushiBal = sushi.balanceOf(address(this));
-        if (_amount > sushiBal) {
-            sushi.transfer(_to, sushiBal);
+    // Safe transfer token function, just in case if rounding error causes pool to not have enough tokens.
+    function safeTransferTokenFromThis(IERC20 _token, address _to, uint256 _amount) internal {
+        uint256 bal = _token.balanceOf(address(this));
+        if (_amount > bal) {
+            _token.transfer(_to, bal);
         } else {
-            sushi.transfer(_to, _amount);
+            _token.transfer(_to, _amount);
         }
     }
 
