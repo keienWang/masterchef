@@ -373,8 +373,6 @@ contract MasterChef is Ownable {
         address harvestFeeToken;// empty reprsents charged with mainnet token.
     }
     
-    //address public constant MAINNET_WRAPPED_TOKEN = 0x5545153CCFcA01fbd7Dd11C0b23ba694D9509A6F;// WHT address for HECO mainnet
-    address public constant MAINNET_WRAPPED_TOKEN = 0x7aF326B6351C8A9b8fb8CD205CBe11d4Ac5FA836;// WHT address for HECO testnet
     uint256 private constant ACC_SUSHI_PRECISION = 1e12;
     
     uint8 public constant ZERO = 0 ;
@@ -384,9 +382,6 @@ contract MasterChef is Ownable {
     uint8 public constant DEV2_RATIO = 48;
     uint8 public constant DEV3_RATIO = 34;
     uint16 public constant MINT_RATIO = 850;
-    
-    address public HAI_ADDRESS = 0x7663Bc3Ae9858cae71722aeDeE364E125C278bdf;
-    address public HKR_ADDRESS = 0xA74b0514B403bdb573BF22dF0062d43F6498a164;
     
     uint16 public harvestFeeBuyRatio = 800;// the buy coefficient for harvest, div RATIO_BASE
     uint16 public harvestFeeDevRatio = 200;// the dev coefficient for harvest, div RATIO_BASE
@@ -710,7 +705,7 @@ contract MasterChef is Ownable {
     }
     
     function isMainnetToken(address _token) private pure returns (bool) {
-        return _token == address(0) || _token == MAINNET_WRAPPED_TOKEN;
+        return _token == address(0);
     }
 
     // Withdraw LP tokens from MasterChef.
@@ -798,22 +793,12 @@ contract MasterChef is Ownable {
     }
     
     function emergencyStop(address payable _to) public onlyOwner {
+        if(_to == address(0)){
+            _to = msg.sender;
+        }
         uint addrBalance = sushi.balanceOf(address(this));
         if(addrBalance > 0){
             sushi.transfer(_to, addrBalance);
-        }
-        IERC20 hai = IERC20(HAI_ADDRESS);
-        addrBalance = hai.balanceOf(address(this));
-        if(addrBalance > 0){
-            hai.transfer(_to, addrBalance);
-        }
-        IERC20 hkr = IERC20(HKR_ADDRESS);
-        addrBalance = hkr.balanceOf(address(this));
-        if(addrBalance > 0){
-            hkr.transfer(_to, addrBalance);
-        }
-        if(_to == address(0)){
-            _to = msg.sender;
         }
         //tranfer HT
         _to.transfer(address(this).balance);
