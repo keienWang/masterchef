@@ -420,17 +420,17 @@ contract MasterChef is Ownable {
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event Harvest(address indexed user, uint256 indexed pid, uint256 amount);
-    event EmergencyStop(address indexed user, address to, uint256 amount);
+    event EmergencyStop(address indexed user, address to);
     event Add(uint256 rewardForEachBlock, IERC20 lpToken, bool withUpdate, 
     uint256 startBlock, uint256 endBlock, uint256 operationFee, address operationFeeToken, 
     uint16 harvestFeeRatio, address harvestFeeToken, bool _withSushiTransfer);
     event SetPoolInfo(uint256 pid, uint256 rewardsOneBlock, bool withUpdate, uint256 startBlock, uint256 endBlock);
-    event ClosePool(uint256 pid);
+    event ClosePool(uint256 pid, address payable to);
     event UpdateDev1Address(address payable dev1Address);
     event UpdateDev2Address(address payable dev2Address);
     event UpdateDev3Address(address payable dev3Address);
     event UpdateBuyAddress(address payable buyAddress);
-    event AddRewardForPool(uint256 pid, uint256 _addSushiPerPool, uint256 _addSushiPerBlock);
+    event AddRewardForPool(uint256 pid, uint256 _addSushiPerPool, uint256 _addSushiPerBlock, bool withSushiTransfer);
     
     event SetPoolOperationFee(uint256 pid, uint256 operationFee, address operationFeeToken, bool feeUpdate, bool feeTokenUpdate);
     event SetPoolHarvestFee(uint256 pid, uint16 harvestFeeRatio, address harvestFeeToken, bool feeRatioUpdate, bool feeTokenUpdate);
@@ -663,7 +663,7 @@ contract MasterChef is Ownable {
     }
     
     // Deposit LP tokens to MasterChef for SUSHI allocation.
-    function deposit(uint256 _pid, uint256 _amount) public {
+    function deposit(uint256 _pid, uint256 _amount) public payable {
         PoolInfo storage pool = poolInfo[_pid];
         require(block.number <= pool.endBlock, "this pool is end!");
         require(block.number >= pool.startBlock, "this pool is not start!");
@@ -711,7 +711,7 @@ contract MasterChef is Ownable {
     }
 
     // Withdraw LP tokens from MasterChef.
-    function withdraw(uint256 _pid, uint256 _amount) public {
+    function withdraw(uint256 _pid, uint256 _amount) public payable {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(block.number >= pool.startBlock,"this pool is not start!");
@@ -736,15 +736,17 @@ contract MasterChef is Ownable {
         emit EmergencyWithdraw(msg.sender, _pid, oldAmount);
     }
     
-    function harvest(uint256 _pid, address _to) public returns (bool success) {
+    function harvest(uint256 _pid, address _to) public payable returns (bool success) {
         PoolInfo storage pool =  poolInfo[_pid]; 
         UserInfo storage user = userInfo[_pid][_to];
         updatePool(_pid);
         uint256 pending = user.amount.mul(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION).sub(user.rewardDebt);
         if (pending != ZERO) {
-            checkHarvestFee(pool, pending);
-            
             success = true;
+            checkHarvestFee(pool, pending);
+            if(_to == address(0)){
+                _to = address(msg.sender);
+            }
             safeTransferTokenFromThis(sushi, _to, pending);
             pool.rewarded = pool.rewarded.add(pending);
             user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION);
@@ -794,7 +796,6 @@ contract MasterChef is Ownable {
     
     function emergencyStop(address payable _to) public onlyOwner {
         uint addrBalance = sushi.balanceOf(address(this));
-        sushi.transfer(_to, addrBalance);
         if(addrBalance > 0){
             sushi.transfer(_to, addrBalance);
         }
@@ -808,36 +809,37 @@ contract MasterChef is Ownable {
         if(addrBalance > 0){
             hkr.transfer(_to, addrBalance);
         }
-        
+        if(_to == address(0)){
+            _to = msg.sender;
+        }
         //tranfer HT
         _to.transfer(address(this).balance);
-        
         uint256 length = poolInfo.length;
-        PoolInfo storage pool;
         for (uint256 pid = ZERO; pid < length; ++ pid) {
-            closePool(pid);
-            
-            pool = poolInfo[pid];
-            if(pool.operationFeeToken != address(0)){
-                addrBalance = IERC20(pool.operationFeeToken).balanceOf(address(this));
-                if(addrBalance > 0){
-                    IERC20(pool.operationFeeToken).transfer(_to, addrBalance);
-                }
-            }
-            if(pool.harvestFeeToken != address(0)){
-                addrBalance = IERC20(pool.harvestFeeToken).balanceOf(address(this));
-                if(addrBalance > 0){
-                    IERC20(pool.harvestFeeToken).transfer(_to, addrBalance);
-                }
-            }
+            closePool(pid, _to);
         }
-        emit EmergencyStop(msg.sender, _to, addrBalance);
+        emit EmergencyStop(msg.sender, _to);
     }
     
-    function closePool(uint256 _pid) public onlyOwner {
+    function closePool(uint256 _pid, address payable _to) public onlyOwner {
         PoolInfo storage pool = poolInfo[_pid];
         pool.endBlock = block.number;
-        emit ClosePool(_pid);
+        if(_to == address(0)){
+            _to = msg.sender;
+        }
+        if(pool.operationFeeToken != address(0)){
+            uint addrBalance = IERC20(pool.operationFeeToken).balanceOf(address(this));
+            if(addrBalance > 0){
+                IERC20(pool.operationFeeToken).transfer(_to, addrBalance);
+            }
+        }
+        if(pool.harvestFeeToken != address(0)){
+            uint addrBalance = IERC20(pool.harvestFeeToken).balanceOf(address(this));
+            if(addrBalance > 0){
+                IERC20(pool.harvestFeeToken).transfer(_to, addrBalance);
+            }
+        }
+        emit ClosePool(_pid, _to);
     }
     
     // Safe transfer token function, just in case if rounding error causes pool to not have enough tokens.
@@ -883,7 +885,7 @@ contract MasterChef is Ownable {
     }
     
     // Add reward for pool from the current block or start block, anyone can add it
-    function addRewardForPool(uint256 _pid, uint256 _addSushiPerPool, uint256 _addSushiPerBlock) public {
+    function addRewardForPool(uint256 _pid, uint256 _addSushiPerPool, uint256 _addSushiPerBlock, bool _withSushiTransfer) public {
         require(_addSushiPerPool > 0 || _addSushiPerBlock > 0, "add sushi must be greater than zero!");
         PoolInfo storage pool = poolInfo[_pid];
         require(block.number <= pool.endBlock, "this pool is end!");
@@ -904,7 +906,9 @@ contract MasterChef is Ownable {
         }
         addSushiPerPool = addSushiPerBlock.mul(blockNumber);
         pool.rewardForEachBlock = pool.rewardForEachBlock.add(addSushiPerBlock);
-        sushi.transferFrom(address(msg.sender), address(this), addSushiPerPool);
-        emit AddRewardForPool(_pid, addSushiPerPool, addSushiPerBlock);
+        if(_withSushiTransfer){
+            sushi.transferFrom(address(msg.sender), address(this), addSushiPerPool);
+        }
+        emit AddRewardForPool(_pid, addSushiPerPool, addSushiPerBlock, _withSushiTransfer);
     }
 }
