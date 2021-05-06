@@ -423,7 +423,7 @@ contract MasterChef is Ownable {
     event EmergencyStop(address indexed user, address to, uint256 amount);
     event Add(uint256 rewardForEachBlock, IERC20 lpToken, bool withUpdate, 
     uint256 startBlock, uint256 endBlock, uint256 operationFee, address operationFeeToken, 
-    uint16 harvestFeeRatio, address harvestFeeToken);
+    uint16 harvestFeeRatio, address harvestFeeToken, bool _withSushiTransfer);
     event SetPoolInfo(uint256 pid, uint256 rewardsOneBlock, bool withUpdate, uint256 startBlock, uint256 endBlock);
     event ClosePool(uint256 pid);
     event UpdateDev1Address(address payable dev1Address);
@@ -477,7 +477,7 @@ contract MasterChef is Ownable {
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
     function add(uint256 _rewardForEachBlock, IERC20 _lpToken, bool _withUpdate, 
     uint256 _startBlock, uint256 _endBlock, uint256 _operationFee, address _operationFeeToken, 
-    uint16 _harvestFeeRatio, address _harvestFeeToken) public onlyOwner {
+    uint16 _harvestFeeRatio, address _harvestFeeToken, bool _withSushiTransfer) public onlyOwner {
         require(_lpToken != IERC20(0), "lpToken can not be zero!");
         require(_rewardForEachBlock > 0, "rewardForEachBlock must be greater than zero!");
         require(_startBlock < _endBlock, "start block must less than end block!");
@@ -498,10 +498,14 @@ contract MasterChef is Ownable {
             harvestFeeRatio: _harvestFeeRatio,
             harvestFeeToken: _harvestFeeToken
         }));
-        emit Add(_rewardForEachBlock, _lpToken, _withUpdate, _startBlock, _endBlock, _operationFee, _operationFeeToken, _harvestFeeRatio, _harvestFeeToken);
+        if(_withSushiTransfer){
+            uint256 amount = (_endBlock - (block.number > _startBlock ? block.number : _startBlock)).add(1).mul(_rewardForEachBlock);
+            sushi.transferFrom(address(msg.sender), address(this), amount);
+        }
+        emit Add(_rewardForEachBlock, _lpToken, _withUpdate, _startBlock, _endBlock, _operationFee, _operationFeeToken, _harvestFeeRatio, _harvestFeeToken, _withSushiTransfer);
     }
 
-    // Update the given pool's pool info. Can only be called by the owner.
+    // Update the given pool's pool info. Can only be called by the owner. 
     function setPoolInfo(uint256 _pid, uint256 _rewardForEachBlock, bool _withUpdate, uint256 _startBlock, uint256 _endBlock) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
@@ -524,7 +528,6 @@ contract MasterChef is Ownable {
         if(_rewardForEachBlock > 0){
             pool.rewardForEachBlock = _rewardForEachBlock;
         }
-        
         emit SetPoolInfo(_pid, _rewardForEachBlock, _withUpdate, _startBlock, _endBlock);
     }
     
