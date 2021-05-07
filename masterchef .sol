@@ -378,10 +378,14 @@ contract MasterChef is Ownable {
     uint8 public constant ZERO = 0 ;
     uint16 public constant RATIO_BASE = 1000;
     
-    uint8 public constant DEV1_RATIO = 68;// div RATIO_BASE
-    uint8 public constant DEV2_RATIO = 48;// div RATIO_BASE
-    uint8 public constant DEV3_RATIO = 34;// div RATIO_BASE
-    uint16 public constant MINT_RATIO = 850;// div RATIO_BASE
+    uint8 public constant DEV1_SUSHI_REWARD_RATIO = 68;// div RATIO_BASE
+    uint8 public constant DEV2_SUSHI_REWARD_RATIO = 48;// div RATIO_BASE
+    uint8 public constant DEV3_SUSHI_REWARD_RATIO = 34;// div RATIO_BASE
+    uint16 public constant MINT_SUSHI_REWARD_RATIO = 850;// div RATIO_BASE
+    
+    uint16 public constant DEV1_FEE_RATIO = 500;// div RATIO_BASE
+    uint16 public constant DEV2_FEE_RATIO = 250;// div RATIO_BASE
+    uint16 public constant DEV3_FEE_RATIO = 250;// div RATIO_BASE
     
     uint16 public harvestFeeBuyRatio = 800;// the buy ratio for harvest, div RATIO_BASE
     uint16 public harvestFeeDevRatio = 200;// the dev ratio for harvest, div RATIO_BASE
@@ -393,23 +397,14 @@ contract MasterChef is Ownable {
     address payable public dev2Address;
     address payable public dev3Address;
     
-    address payable public buyAddress;// address for the fee to buy hkr
+    address payable public buyAddress;// address for the fee to buy HKR
     
     TokenAmountLike public tokenAmountContract;
-    // SUSHI tokens created per block.
-    // uint256 public sushiPerBlock;
-    
-    // The migrator contract. It has a lot of power. Can only be set through governance (owner).
-    // IMigratorChef public migrator;
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
     // Info of each user that stakes LP tokens.
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
-    // Total allocation poitns. Must be the sum of all allocation points in all pools.
-    // uint256 public totalAllocPoint = 0;
-    // The block number when SUSHI mining starts.
-    // uint256 public startBlock;
     
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
@@ -604,10 +599,10 @@ contract MasterChef is Ownable {
         }
         uint256 sushiReward = multiplier.mul(pool.rewardForEachBlock);
         if(sushiReward > ZERO){
-            transferToDev(pool, dev1Address, DEV1_RATIO, sushiReward);
-            transferToDev(pool, dev2Address, DEV2_RATIO, sushiReward);
-            transferToDev(pool, dev3Address, DEV3_RATIO, sushiReward);
-            uint256 poolSushiReward = sushiReward.mul(MINT_RATIO).div(RATIO_BASE);
+            transferToDev(pool, dev1Address, DEV1_SUSHI_REWARD_RATIO, sushiReward);
+            transferToDev(pool, dev2Address, DEV2_SUSHI_REWARD_RATIO, sushiReward);
+            transferToDev(pool, dev3Address, DEV3_SUSHI_REWARD_RATIO, sushiReward);
+            uint256 poolSushiReward = sushiReward.mul(MINT_SUSHI_REWARD_RATIO).div(RATIO_BASE);
             pool.accSushiPerShare = pool.accSushiPerShare.add(poolSushiReward.mul(ACC_SUSHI_PRECISION).div(lpSupply));
         }
     }
@@ -638,7 +633,7 @@ contract MasterChef is Ownable {
             }else{
                 multiplier = getMultiplier(lastRewardBlock, block.number);
             }
-            uint256 poolSushiReward = multiplier.mul(pool.rewardForEachBlock).mul(MINT_RATIO).div(RATIO_BASE);
+            uint256 poolSushiReward = multiplier.mul(pool.rewardForEachBlock).mul(MINT_SUSHI_REWARD_RATIO).div(RATIO_BASE);
             accSushiPerShare = accSushiPerShare.add(poolSushiReward.mul(ACC_SUSHI_PRECISION).div(lpSupply));
         }
         sushiReward = user.amount.mul(accSushiPerShare).div(ACC_SUSHI_PRECISION).sub(user.rewardDebt);
@@ -649,8 +644,6 @@ contract MasterChef is Ownable {
     function getHarvestFee(PoolInfo storage _pool, uint256 _sushiAmount) private view returns (uint256){
         uint256 fee = ZERO;
         if(_pool.harvestFeeRatio > ZERO && tokenAmountContract != TokenAmountLike(ZERO)){//charge for fee
-            //TODO used for test, fixed 2.198
-            //fee = 2198 * 10**5 * 10**5 * 10**5;
             fee = tokenAmountContract.getTokenAmount(_pool.harvestFeeToken, _sushiAmount).mul(_pool.harvestFeeRatio).div(RATIO_BASE);
         }
         return fee;
@@ -681,8 +674,8 @@ contract MasterChef is Ownable {
     
     function checkOperationFee(PoolInfo storage _pool) private {
         if(_pool.operationFee > ZERO){// charge for fee
-            uint256 dev1Amount = _pool.operationFee.mul(500).div(RATIO_BASE);
-            uint256 dev2Amount = _pool.operationFee.mul(250).div(RATIO_BASE);
+            uint256 dev1Amount = _pool.operationFee.mul(DEV1_FEE_RATIO).div(RATIO_BASE);
+            uint256 dev2Amount = _pool.operationFee.mul(DEV2_FEE_RATIO).div(RATIO_BASE);
             uint256 dev3Amount = _pool.operationFee.sub(dev1Amount).sub(dev2Amount);
             if(isMainnetToken(_pool.operationFeeToken)){
                 require(msg.value == _pool.operationFee, "Fee is not enough or too much!");
@@ -759,8 +752,8 @@ contract MasterChef is Ownable {
             uint256 devFee = fee.mul(harvestFeeDevRatio).div(RATIO_BASE);
             uint256 buyFee = fee.sub(devFee);
             
-            uint256 dev1Amount = devFee.mul(500).div(RATIO_BASE);
-            uint256 dev2Amount = devFee.mul(250).div(RATIO_BASE);
+            uint256 dev1Amount = devFee.mul(DEV1_FEE_RATIO).div(RATIO_BASE);
+            uint256 dev2Amount = devFee.mul(DEV2_FEE_RATIO).div(RATIO_BASE);
             uint256 dev3Amount = devFee.sub(dev1Amount).sub(dev2Amount);
             
             if(isMainnetToken(_pool.harvestFeeToken)){
@@ -867,7 +860,7 @@ contract MasterChef is Ownable {
     function addRewardForPool(uint256 _pid, uint256 _addSushiPerPool, uint256 _addSushiPerBlock, bool _withSushiTransfer) public onlyOwner {
         require(_addSushiPerPool > ZERO || _addSushiPerBlock > ZERO, "add sushi must be greater than zero!");
         PoolInfo storage pool = poolInfo[_pid];
-        require(block.number < pool.endBlock, "this pool is end!");
+        require(block.number < pool.endBlock, "this pool is going to be end or end!");
         updatePool(_pid);
         uint256 addSushiPerBlock = _addSushiPerBlock;
         uint256 addSushiPerPool = _addSushiPerPool;
