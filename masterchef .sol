@@ -873,7 +873,7 @@ contract MasterChef is Ownable {
     }
     
     // Add reward for pool from the current block or start block, anyone can add it
-    function addRewardForPool(uint256 _pid, uint256 _addSushiPerPool, uint256 _addSushiPerBlock, bool _withSushiTransfer) public {
+    function addRewardForPool(uint256 _pid, uint256 _addSushiPerPool, uint256 _addSushiPerBlock, bool _withSushiTransfer) public onlyOwner {
         require(_addSushiPerPool > ZERO || _addSushiPerBlock > ZERO, "add sushi must be greater than zero!");
         PoolInfo storage pool = poolInfo[_pid];
         require(block.number <= pool.endBlock, "this pool is end!");
