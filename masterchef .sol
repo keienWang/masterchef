@@ -330,7 +330,7 @@ interface TokenAmountLike {
 
 /**
  * @title Helps contracts guard agains rentrancy attacks.
- * @author Remco Bloemen <remco@2¦Ð.com>
+ * @author Remco Bloemen <remco@2Â¦Ã.com>
  * @notice If you mark a function `nonReentrant`, you should also
  * mark it `external`.
  */
@@ -689,7 +689,7 @@ contract MasterChef is Ownable, ReentrancyGuard{
     }
     
     // Deposit LP tokens to MasterChef for SUSHI allocation.
-    function deposit(uint256 _pid, uint256 _amount) public payable{
+    function deposit(uint256 _pid, uint256 _amount) public payable {
         PoolInfo storage pool = poolInfo[_pid];
         require(block.number <= pool.endBlock, "this pool is end!");
         require(block.number >= pool.startBlock, "this pool is not start!");
@@ -703,7 +703,7 @@ contract MasterChef is Ownable, ReentrancyGuard{
         emit Deposit(msg.sender, _pid, _amount);
     }
     
-    function checkOperationFee(PoolInfo storage _pool) private nonReentrant{
+    function checkOperationFee(PoolInfo storage _pool) private nonReentrant {
         if(_pool.operationFee > ZERO){// charge for fee
             uint256 dev1Amount = _pool.operationFee.mul(DEV1_FEE_RATIO).div(RATIO_BASE);
             uint256 dev2Amount = _pool.operationFee.mul(DEV2_FEE_RATIO).div(RATIO_BASE);
