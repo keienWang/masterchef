@@ -328,6 +328,36 @@ interface TokenAmountLike {
     function getTokenAmount(address _token, uint256 hkrAmount) external view returns (uint256);
 }
 
+/**
+ * @title Helps contracts guard agains rentrancy attacks.
+ * @author Remco Bloemen <remco@2¦Ð.com>
+ * @notice If you mark a function `nonReentrant`, you should also
+ * mark it `external`.
+ */
+contract ReentrancyGuard {
+
+  /**
+   * @dev We use a single lock for the whole contract.
+   */
+  bool private rentrancy_lock = false;
+
+  /**
+   * @dev Prevents a contract from calling itself, directly or indirectly.
+   * @notice If you mark a function `nonReentrant`, you should also
+   * mark it `external`. Calling one nonReentrant function from
+   * another is not supported. Instead, you can implement a
+   * `private` function doing the actual work, and a `external`
+   * wrapper marked as `nonReentrant`.
+   */
+  modifier nonReentrant() {
+    require(!rentrancy_lock);
+    rentrancy_lock = true;
+    _;
+    rentrancy_lock = false;
+  }
+
+}
+
 // MasterChef is the master of Sushi. He can make Sushi and he is a fair guy.
 //
 // Note that it's ownable and the owner wields tremendous power. The ownership
@@ -335,7 +365,8 @@ interface TokenAmountLike {
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
-contract MasterChef is Ownable {
+
+contract MasterChef is Ownable, ReentrancyGuard{
     using SafeMath for uint256;
    
     // Info of each user.
@@ -658,7 +689,7 @@ contract MasterChef is Ownable {
     }
     
     // Deposit LP tokens to MasterChef for SUSHI allocation.
-    function deposit(uint256 _pid, uint256 _amount) public payable {
+    function deposit(uint256 _pid, uint256 _amount) public payable{
         PoolInfo storage pool = poolInfo[_pid];
         require(block.number <= pool.endBlock, "this pool is end!");
         require(block.number >= pool.startBlock, "this pool is not start!");
@@ -672,7 +703,7 @@ contract MasterChef is Ownable {
         emit Deposit(msg.sender, _pid, _amount);
     }
     
-    function checkOperationFee(PoolInfo storage _pool) private {
+    function checkOperationFee(PoolInfo storage _pool) private nonReentrant{
         if(_pool.operationFee > ZERO){// charge for fee
             uint256 dev1Amount = _pool.operationFee.mul(DEV1_FEE_RATIO).div(RATIO_BASE);
             uint256 dev2Amount = _pool.operationFee.mul(DEV2_FEE_RATIO).div(RATIO_BASE);
@@ -726,7 +757,7 @@ contract MasterChef is Ownable {
         emit EmergencyWithdraw(msg.sender, _pid, oldAmount);
     }
     
-    function harvest(uint256 _pid, address _to) public payable returns (bool success) {
+    function harvest(uint256 _pid, address _to) public nonReentrant payable returns (bool success) {
         if(_to == address(ZERO)){
             _to = msg.sender;
         }
