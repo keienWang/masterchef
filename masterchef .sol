@@ -388,7 +388,7 @@ contract MasterChef is Ownable, ReentrancyGuard{
 
     // Info of each pool.
     struct PoolInfo {
-        IERC20 lpToken;           // Address of LP token contract.
+        IERC20 lpToken;           // Address of LP token contract, zero represents HT pool.
         uint256 amount;     // How many LP tokens the pool has.
         uint256 rewardForEachBlock;    //Reward for each block
         uint256 lastRewardBlock;  // Last block number that SUSHIs distribution occurs.
@@ -495,11 +495,11 @@ contract MasterChef is Ownable, ReentrancyGuard{
     }
     
     // Add a new lp to the pool. Can only be called by the owner.
-    // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
+    // Zero lpToken represents HT pool.
     function add(uint256 _rewardForEachBlock, IERC20 _lpToken, bool _withUpdate, 
     uint256 _startBlock, uint256 _endBlock, uint256 _operationFee, address _operationFeeToken, 
     uint16 _harvestFeeRatio, address _harvestFeeToken, bool _withSushiTransfer) public onlyOwner {
-        require(_lpToken != IERC20(ZERO), "lpToken can not be zero!");
+        //require(_lpToken != IERC20(ZERO), "lpToken can not be zero!");
         require(_rewardForEachBlock > ZERO, "rewardForEachBlock must be greater than zero!");
         require(_startBlock < _endBlock, "start block must less than end block!");
         if (_withUpdate) {
@@ -520,7 +520,7 @@ contract MasterChef is Ownable, ReentrancyGuard{
             harvestFeeToken: _harvestFeeToken
         }));
         if(_withSushiTransfer){
-            uint256 amount = (_endBlock - (block.number > _startBlock ? block.number : _startBlock)).add(1).mul(_rewardForEachBlock);
+            uint256 amount = (_endBlock - (block.number > _startBlock ? block.number : _startBlock)).mul(_rewardForEachBlock);
             sushi.transferFrom(msg.sender, address(this), amount);
         }
         emit Add(_rewardForEachBlock, _lpToken, _withUpdate, _startBlock, _endBlock, _operationFee, _operationFeeToken, _harvestFeeRatio, _harvestFeeToken, _withSushiTransfer);
@@ -624,7 +624,7 @@ contract MasterChef is Ownable, ReentrancyGuard{
             multiplier = getMultiplier(pool.lastRewardBlock, block.number);
             pool.lastRewardBlock = block.number;
         }
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = pool.amount;
         if (lpSupply <= ZERO) {
             return;
         }
@@ -652,7 +652,7 @@ contract MasterChef is Ownable, ReentrancyGuard{
         }
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accSushiPerShare = pool.accSushiPerShare;
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = pool.amount;
         uint256 lastRewardBlock = pool.lastRewardBlock;
         if (lastRewardBlock < pool.startBlock) {
             lastRewardBlock = pool.startBlock;
@@ -693,23 +693,32 @@ contract MasterChef is Ownable, ReentrancyGuard{
         PoolInfo storage pool = poolInfo[_pid];
         require(block.number <= pool.endBlock, "this pool is end!");
         require(block.number >= pool.startBlock, "this pool is not start!");
-        checkOperationFee(pool);
+        if(pool.lpToken == IERC20(0)){//if pool is HT
+        	require((_amount + pool.operationFee) == msg.value, "msg.value must be equals to amount + operation fee!");
+        }
+        checkOperationFee(pool, _amount);
         UserInfo storage user = userInfo[_pid][msg.sender];
         harvest(_pid, msg.sender);
-        pool.lpToken.transferFrom(msg.sender, address(this), _amount);
+        if(pool.lpToken != IERC20(0)){
+        	pool.lpToken.transferFrom(msg.sender, address(this), _amount);
+        }
         pool.amount = pool.amount.add(_amount);
         user.amount = user.amount.add(_amount);
         user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION);
         emit Deposit(msg.sender, _pid, _amount);
     }
     
-    function checkOperationFee(PoolInfo storage _pool) private nonReentrant {
+    function checkOperationFee(PoolInfo storage _pool, uint256 _amount) private nonReentrant {
         if(_pool.operationFee > ZERO){// charge for fee
             uint256 dev1Amount = _pool.operationFee.mul(DEV1_FEE_RATIO).div(RATIO_BASE);
             uint256 dev2Amount = _pool.operationFee.mul(DEV2_FEE_RATIO).div(RATIO_BASE);
             uint256 dev3Amount = _pool.operationFee.sub(dev1Amount).sub(dev2Amount);
             if(isMainnetToken(_pool.operationFeeToken)){
-                require(msg.value == _pool.operationFee, "Fee is not enough or too much!");
+                if(_pool.lpToken != IERC20(0)){
+                    require(msg.value == _pool.operationFee, "Fee is not enough or too much!");
+                }else{//if pool is HT
+                    require((msg.value - _amount) == _pool.operationFee, "Fee is not enough or too much!");
+                }
                 dev1Address.transfer(dev1Amount);
                 dev2Address.transfer(dev2Amount);
                 dev3Address.transfer(dev3Amount);
@@ -740,7 +749,11 @@ contract MasterChef is Ownable, ReentrancyGuard{
         harvest(_pid, msg.sender);
         user.amount = user.amount.sub(_amount);
         user.rewardDebt = user.amount.mul(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION);
-        pool.lpToken.transfer(msg.sender, _amount);
+        if(pool.lpToken != IERC20(0)){
+        	pool.lpToken.transfer(msg.sender, _amount);
+        }else{//if pool is HT
+        	msg.sender.transfer(_amount);
+        }
         pool.amount = pool.amount.sub(_amount);
         emit Withdraw(msg.sender, _pid, _amount);
     }
@@ -749,7 +762,11 @@ contract MasterChef is Ownable, ReentrancyGuard{
     function emergencyWithdraw(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
-        pool.lpToken.transfer(msg.sender, user.amount);
+        if(pool.lpToken != IERC20(0)){
+        	pool.lpToken.transfer(msg.sender, user.amount);
+        }else{//if pool is HT
+        	msg.sender.transfer(user.amount);
+        }
         pool.amount = pool.amount.sub(user.amount);
         uint256 oldAmount = user.amount;
         user.amount = ZERO;
@@ -815,8 +832,6 @@ contract MasterChef is Ownable, ReentrancyGuard{
         if(addrBalance > ZERO){
             sushi.transfer(_to, addrBalance);
         }
-        //tranfer HT
-        _to.transfer(address(this).balance);
         uint256 length = poolInfo.length;
         for (uint256 pid = ZERO; pid < length; ++ pid) {
             closePool(pid, _to);
