@@ -752,10 +752,15 @@ contract MasterChef is Ownable, ReentrancyGuard{
         if(pool.lpToken != IERC20(0)){
         	pool.lpToken.transfer(msg.sender, _amount);
         }else{//if pool is HT
-        	msg.sender.transfer(_amount);
+        	transferMainnetToken(msg.sender, _amount);
         }
         pool.amount = pool.amount.sub(_amount);
         emit Withdraw(msg.sender, _pid, _amount);
+    }
+    
+    //transfer HT
+    function transferMainnetToken(address payable _to, uint256 _amount) private nonReentrant {
+        _to.transfer(_amount);
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
@@ -765,7 +770,7 @@ contract MasterChef is Ownable, ReentrancyGuard{
         if(pool.lpToken != IERC20(0)){
         	pool.lpToken.transfer(msg.sender, user.amount);
         }else{//if pool is HT
-        	msg.sender.transfer(user.amount);
+        	transferMainnetToken(msg.sender, user.amount);
         }
         pool.amount = pool.amount.sub(user.amount);
         uint256 oldAmount = user.amount;
