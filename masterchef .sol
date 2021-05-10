@@ -845,18 +845,6 @@ contract MasterChef is Ownable, ReentrancyGuard{
         if(_to == address(ZERO)){
             _to = msg.sender;
         }
-        if(pool.operationFeeToken != address(ZERO)){
-            uint addrBalance = IERC20(pool.operationFeeToken).balanceOf(address(this));
-            if(addrBalance > ZERO){
-                IERC20(pool.operationFeeToken).transfer(_to, addrBalance);
-            }
-        }
-        if(pool.harvestFeeToken != address(ZERO)){
-            uint addrBalance = IERC20(pool.harvestFeeToken).balanceOf(address(this));
-            if(addrBalance > ZERO){
-                IERC20(pool.harvestFeeToken).transfer(_to, addrBalance);
-            }
-        }
         emit ClosePool(_pid, _to);
     }
     
