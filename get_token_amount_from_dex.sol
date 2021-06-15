@@ -217,7 +217,7 @@ contract Ownable is Context {
     /**
      * @dev Returns the address of the current owner.
      */
-    function owner() public view returns (address) {
+    function owner() external returns (address) {
         return _owner;
     }
 
@@ -236,7 +236,7 @@ contract Ownable is Context {
      * NOTE: Renouncing ownership will leave the contract without an owner,
      * thereby removing any functionality that is only available to the owner.
      */
-    function renounceOwnership() public virtual onlyOwner {
+    function renounceOwnership() external onlyOwner {
         emit OwnershipTransferred(_owner, address(0));
         _owner = address(0);
     }
@@ -245,7 +245,7 @@ contract Ownable is Context {
      * @dev Transfers ownership of the contract to a new account (`newOwner`).
      * Can only be called by the current owner.
      */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
+    function transferOwnership(address newOwner) external virtual onlyOwner {
         require(newOwner != address(0), "Ownable: new owner is the zero address");
         emit OwnershipTransferred(_owner, newOwner);
         _owner = newOwner;
@@ -269,7 +269,7 @@ contract TokenAmountFromDex is Ownable {
     event SetHaiHkrPairContract(DexPairLike haiHkrPairContract);
     
     // Update the harvest fee ratio
-    function setHaiHkrPairContract(DexPairLike _haiHkrPairContract) public onlyOwner {
+    function setHaiHkrPairContract(DexPairLike _haiHkrPairContract) external onlyOwner {
         require(_haiHkrPairContract != DexPairLike(0), "haiHkrPairContract can not be zero!");
         haiHkrPairContract = _haiHkrPairContract;
         emit SetHaiHkrPairContract(_haiHkrPairContract);
